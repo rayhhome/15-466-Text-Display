@@ -87,13 +87,21 @@ Text::~Text() {
   FT_Done_FreeType(ft_library);
 }
 
-void Text::show_text(std::string const &text, glm::uvec2 const &drawable_size, float const &x_in, float const &y_in, float const &scale, glm::vec3 const &color) const {
+void Text::show_text(std::string const &text, glm::uvec2 const &drawable_size, float const &x_in, float const &y_in, int const& size, float const &scale, glm::vec3 const &color) const {
 	//https://learnopengl.com/In-Practice/Text-Rendering  
   //pull up shade program: color_text_program
   glUseProgram(color_text_program->program);
   glUniform3f(glGetUniformLocation(color_text_program->program, "TEXT_COLOR"), color.x, color.y, color.z);
   glActiveTexture(GL_TEXTURE0);
   glBindVertexArray(vao);
+
+  if (size > 0) {
+    ft_error = FT_Set_Char_Size(ft_face, 0, size << 6, 0, 0);  // 72dpi
+    if (ft_error) {
+      std::cout << "Error: FreeType Set Char Size Failure" << std::endl;
+      abort();
+    }
+  }
 
   //Harfbuzz buffer initialization
   hb_buffer_t *hb_buffer;

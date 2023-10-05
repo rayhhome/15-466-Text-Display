@@ -13,5 +13,5 @@ struct Text {
   ~Text();
 
   //main text display function
-	void show_text(std::string const &text, glm::uvec2 const &drawable_size, float const &x_in, float const &y_in, float const &scale, glm::vec3 const &color) const;
+	void show_text(std::string const &text, glm::uvec2 const &drawable_size, float const &x_in, float const &y_in, int const &size, float const &scale, glm::vec3 const &color) const;
 };
