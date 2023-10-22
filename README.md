@@ -11,28 +11,28 @@ Please feel free to point out bugs and make changes to this package!
 ## Catalog
 This package contains the following files:
 - ```README.md```: This document.
-- ```Text.hpp```: Header file of struct ```Text```.
-- ```Text.cpp```: Cpp file implementing ```Text```.
+- ```TextDisplay.hpp```: Header file of struct ```TextDisplay```.
+- ```TextDisplay.cpp```: Cpp file implementing ```TextDisplay```.
 - ```ColorTextProgram.hpp```: Header file of openGL program ```color_text_program```.
 - ```ColorTextProgram.hpp```: Cpp file containing the program specifics.
 - ```demo_images/```: Folder containing demo images for ```README.md```.
 
 ## Implementation
-Text Drawing is realized using HarfBuzz buffers to read FreeType fonts and rendering them using openGL VBO. FreeType reads font and fills in bitmaps for VBO. HarfBuzz buffers provide sizes, advances, and offsets of glyphs, mcuh simplifying the rendering procedure. This process is realized in the newly created utility files Text.hpp and Text.cpp, along with the openGL program ColorTextProgram (referenced from OpenGL Text Rendering Chapter).
+Text Drawing is realized using HarfBuzz buffers to read FreeType fonts and rendering them using openGL VBO. FreeType reads font and fills in bitmaps for VBO. HarfBuzz buffers provide sizes, advances, and offsets of glyphs, mcuh simplifying the rendering procedure. This process is realized in the newly created utility files TextDisplay.hpp and TextDisplay.cpp, along with the openGL program ColorTextProgram (referenced from OpenGL Text Rendering Chapter).
 
 ## Usage
 ### Preparation
 To use this package, place all four files in the main directory. 
 
-In the file where you plan to render text (```PlayMode.cpp``` most of the time), add the line ```#include Text.hpp```. 
+In the file where you plan to render text (```PlayMode.cpp``` most of the time), add the line ```#include TextDisplay.hpp```. 
 
-Also, add ```maek.CPP('Text.cpp')``` and ```	maek.CPP('ColorTextProgram.cpp')``` to ```game_names``` in ```Maekfile.js``` to build correctly.
+Also, add ```maek.CPP('TextDisplay.cpp')``` and ```	maek.CPP('ColorTextProgram.cpp')``` to ```game_names``` in ```Maekfile.js``` to build correctly.
 
 ### Creating Text Object
-To create a Text object with your chosen font, use ```Load< T >```. Below is an example using [Mooli](https://fonts.google.com/specimen/Mooli?query=Mooli).
+To create a TextDisplay object with your chosen font, use ```Load< T >```. Below is an example using [Mooli](https://fonts.google.com/specimen/Mooli?query=Mooli).
 ```cpp
-Load< Text > text_display(LoadTagDefault, []() -> Text const * {
-	return new Text(data_path("Mooli-Regular.ttf"));
+Load< TextDisplay > text_display(LoadTagDefault, []() -> TextDisplay const * {
+	return new TextDisplay(data_path("Mooli-Regular.ttf"));
 });
 ```
 Now you can call the main display function ```show_text``` using ```test_display```:
@@ -43,8 +43,8 @@ text_display->show_text("Hello CGProgramming!", drawable_size, -1.0f, -1.0f, 72,
 
 Example using [NotoSansSC](https://fonts.google.com/noto/specimen/Noto+Sans+SC?query=chinese):
 ```
-Load< Text > text_display(LoadTagDefault, []() -> Text const * {
-	return new Text(data_path("NotoSansSC-VariableFont_wght.ttf"));
+Load< TextDisplay > text_display(LoadTagDefault, []() -> TextDisplay const * {
+	return new TextDisplay(data_path("NotoSansSC-VariableFont_wght.ttf"));
 });
 ```
 ```cpp

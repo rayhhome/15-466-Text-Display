@@ -1,6 +1,6 @@
 //author: Sirui (Ray) Huang, and all referenced sources (in comments as links)
 //usage : Render text in quads!
-#include "Text.hpp"
+#include "TextDisplay.hpp"
 
 #include "GL.hpp"
 #include "gl_errors.hpp"
@@ -15,6 +15,7 @@
 
 #include <iostream>
 #include <cmath> // for dichotomic aligned text support
+#include <stdexcept>
 
 #define DEFAULT_SIZE 24 // font size, either change me or use show_text with scale parameter 
 #define DRAW_WIDTH 1280 // drawable space width, change me!
@@ -22,42 +23,33 @@
 
 //reference: https://github.com/harfbuzz/harfbuzz-tutorial/blob/master/hello-harfbuzz-freetype.c
 //FreeType objects to use
-FT_Library ft_library;
-FT_Face ft_face;
-FT_Error ft_error;
+static FT_Library ft_library;
+static FT_Face ft_face;
+static FT_Error ft_error;
+
+//Harfbuzz objects to use
+static hb_font_t *hb_font;
+static hb_buffer_t *hb_buffer;
 
 //glu vertex array object/vertex buffer object
-GLuint vao;
-GLuint vbo;
+static GLuint vao = 0;
+static GLuint vbo = 0;
 
-Text::Text(std::string const &filename) {
+TextDisplay::TextDisplay(std::string const &filename) {
   //https://github.com/harfbuzz/harfbuzz-tutorial/blob/master/hello-harfbuzz-freetype.c
   //FreeType initialization
   ft_error = FT_Init_FreeType(&ft_library);
   if (ft_error) {
-    std::cout << "Error: FreeType Library Initialization Failure" << std::endl;
-		abort();
+    throw std::runtime_error("Error: FreeType Library Initialization Failure");
 	}
   ft_error = FT_New_Face(ft_library, filename.c_str(), 0, &ft_face);
 	if (ft_error) {
-		std::cout << "Error: FreeType TypeFace Initialization Failure" << std::endl;
-    abort();
+		throw std::runtime_error("Error: FreeType TypeFace Initialization Failure");
 	}
   ft_error = FT_Set_Char_Size(ft_face, 0, DEFAULT_SIZE << 6, 0, 0);  // 72dpi
 	if (ft_error) {
-    std::cout << "Error: FreeType Set Char Size Failure" << std::endl;
-		abort();
+    throw std::runtime_error("Error: FreeType Set Char Size Failure");
 	}
-  
-  //https://learnopengl.com/In-Practice/Text-Rendering
-  //remove restriction on byte alignment
-  glPixelStorei(GL_UNPACK_ALIGNMENT, 1); 
-
-  //https://learnopengl.com/code_viewer_gh.php?code=src/7.in_practice/2.text_rendering/text_rendering.cpp
-  //gl setup
-	glEnable(GL_CULL_FACE);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  
 
   //set up program's projection matrix
   //for projection, no perspective needed and orthographic projection is used
@@ -75,19 +67,27 @@ Text::Text(std::string const &filename) {
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), 0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindVertexArray(0);   
+	glBindVertexArray(0);
 
+  //Harfbuzz objects preparation
+  hb_buffer = hb_buffer_create();
+  hb_font = hb_ft_font_create(ft_face, NULL);
+  
   //display any openGL errors
   GL_ERRORS();
 }
 
-Text::~Text() {
+TextDisplay::~TextDisplay() {
   //freetype objects used, free storage
   FT_Done_Face(ft_face);
   FT_Done_FreeType(ft_library);
+  
+  //hb objects used, free storage
+  hb_buffer_destroy(hb_buffer);
+  hb_font_destroy(hb_font);
 }
 
-void Text::show_text(std::string const &text, glm::uvec2 const &drawable_size, float const &x_in, float const &y_in, int const& size, float const &scale, glm::vec3 const &color) const {
+void TextDisplay::show_text(std::string const &text, glm::uvec2 const &drawable_size, float const &x_in, float const &y_in, int const& size, float const &scale, glm::vec3 const &color) const {
 	//https://learnopengl.com/In-Practice/Text-Rendering  
   //pull up shade program: color_text_program
   glUseProgram(color_text_program->program);
@@ -95,17 +95,22 @@ void Text::show_text(std::string const &text, glm::uvec2 const &drawable_size, f
   glActiveTexture(GL_TEXTURE0);
   glBindVertexArray(vao);
 
+  //https://learnopengl.com/In-Practice/Text-Rendering
+  //remove restriction on byte alignment
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1); 
+
+  //https://learnopengl.com/code_viewer_gh.php?code=src/7.in_practice/2.text_rendering/text_rendering.cpp
+  //gl setup
+	glEnable(GL_CULL_FACE);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  
+
   if (size > 0) {
     ft_error = FT_Set_Char_Size(ft_face, 0, size << 6, 0, 0);  // 72dpi
     if (ft_error) {
-      std::cout << "Error: FreeType Set Char Size Failure" << std::endl;
-      abort();
+      throw std::runtime_error("Error: FreeType Set Char Size Failure");
     }
   }
-
-  //Harfbuzz buffer initialization
-  hb_buffer_t *hb_buffer;
-	hb_buffer = hb_buffer_create();
 
 	//add text to buffer, using c_str to ensure text null-terminated
 	hb_buffer_add_utf8(hb_buffer, text.c_str(), -1, 0, -1);
@@ -114,10 +119,6 @@ void Text::show_text(std::string const &text, glm::uvec2 const &drawable_size, f
 	// hb_buffer_set_script(hb_buffer, HB_SCRIPT_LATIN);
   // hb_buffer_set_language(hb_buffer, hb_language_from_string("en", -1));
   hb_buffer_guess_segment_properties(hb_buffer);
-
-	//create font
-	hb_font_t *hb_font;
-	hb_font = hb_ft_font_create(ft_face, NULL);
 
 	//shape!!
 	hb_shape(hb_font, hb_buffer, NULL, 0);
@@ -166,13 +167,11 @@ void Text::show_text(std::string const &text, glm::uvec2 const &drawable_size, f
     //load and render current glyph
     ft_error = FT_Load_Glyph(ft_face, info[i].codepoint, FT_LOAD_DEFAULT);
 		if (ft_error) {
-      std::cout << "Error: FreeType Load Glyph Failure" << std::endl;
-      abort();
+      throw std::runtime_error("Error: FreeType Load Glyph Failure");
     }
     ft_error = FT_Render_Glyph(ft_face->glyph, FT_RENDER_MODE_NORMAL);
 		if (ft_error) {
-      std::cout << "Error: FreeType Render Glyph Failure" << std::endl;
-      abort();
+      throw std::runtime_error("Error: FreeType Render Glyph Failure");
     } 
 
     //set texture for current glyph
@@ -233,9 +232,13 @@ void Text::show_text(std::string const &text, glm::uvec2 const &drawable_size, f
 	glUseProgram(0);
   glBindVertexArray(0);
 
+  //reset alignment, cull face, and blending
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 4); 
+  glDisable(GL_CULL_FACE);
+	glDisable(GL_BLEND);
+
   //buffer use complete, free storage
-	hb_buffer_destroy (hb_buffer);
-  hb_font_destroy (hb_font);
+  hb_buffer_reset(hb_buffer);
 
   //display any openGL errors
   GL_ERRORS();
