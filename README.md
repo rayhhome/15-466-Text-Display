@@ -26,7 +26,7 @@ To use this package, place all four files in the main directory.
 
 In the file where you plan to render text (```PlayMode.cpp``` most of the time), add the line ```#include TextDisplay.hpp```. 
 
-Also, add ```maek.CPP('TextDisplay.cpp')``` and ```	maek.CPP('ColorTextProgram.cpp')``` to ```game_names``` in ```Maekfile.js``` to build correctly.
+Also, add ```maek.CPP('TextDisplay.cpp')``` and ```maek.CPP('ColorTextProgram.cpp')``` to ```game_names``` in ```Maekfile.js``` to build correctly.
 
 ### Creating Text Object
 To create a TextDisplay object with your chosen font, use ```Load< T >```. Below is an example using [Mooli](https://fonts.google.com/specimen/Mooli?query=Mooli).
