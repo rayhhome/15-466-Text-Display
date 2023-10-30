@@ -3,6 +3,7 @@
 #include "TextDisplay.hpp"
 
 #include "GL.hpp"
+#include "Load.hpp"
 #include "gl_errors.hpp"
 #include "gl_compile_program.hpp"
 
@@ -31,10 +32,48 @@ static FT_Error ft_error;
 static hb_font_t *hb_font;
 static hb_buffer_t *hb_buffer;
 
-//glu vertex array object/vertex buffer object
+//glu vertex array object/vertex buffer object for text rendering program
 static GLuint vao = 0;
 static GLuint vbo = 0;
 
+//Preprocess
+static Load< void > setup(LoadTagDefault, []() {
+  //set up program's projection matrix
+  //for projection, no perspective needed and orthographic projection is used
+  glUseProgram(color_text_program->program);
+	glm::mat4 projection = glm::ortho(0.0f, static_cast<float>(DRAW_WIDTH), 0.0f, static_cast<float>(DRAW_HEIGHT));
+	glUniformMatrix4fv(glGetUniformLocation(color_text_program->program, "PROJECTION"), 1, GL_FALSE, &projection[0][0]);
+  glUseProgram(0);
+
+  //gl objects preparation
+  //set up unfilled vertex buffer
+	glGenBuffers(1, &vbo);
+
+  //vertex array mapping buffer for text rendering program
+	glGenVertexArrays(1, &vao);
+
+  //select current objects
+	glBindVertexArray(vao);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+  //fill in vbo
+	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
+	
+  //enable attribute index for vertex
+  glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), 0);
+	
+  //unbind vbo
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+	
+  //unbind vao
+  glBindVertexArray(0);
+
+  //display any openGL errors
+  GL_ERRORS();
+});
+
+//Constructor
 TextDisplay::TextDisplay(std::string const &filename) {
   //https://github.com/harfbuzz/harfbuzz-tutorial/blob/master/hello-harfbuzz-freetype.c
   //FreeType initialization
@@ -51,24 +90,6 @@ TextDisplay::TextDisplay(std::string const &filename) {
     throw std::runtime_error("Error: FreeType Set Char Size Failure");
 	}
 
-  //set up program's projection matrix
-  //for projection, no perspective needed and orthographic projection is used
-  glUseProgram(color_text_program->program);
-	glm::mat4 projection = glm::ortho(0.0f, static_cast<float>(DRAW_WIDTH), 0.0f, static_cast<float>(DRAW_HEIGHT));
-	glUniformMatrix4fv(glGetUniformLocation(color_text_program->program, "PROJECTION"), 1, GL_FALSE, &projection[0][0]);
-  glUseProgram(0);
-
-  //gl objects preparation
-	glGenVertexArrays(1, &vao);
-	glGenBuffers(1, &vbo);
-	glBindVertexArray(vao);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), 0);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindVertexArray(0);
-
   //Harfbuzz objects preparation
   hb_buffer = hb_buffer_create();
   hb_font = hb_ft_font_create(ft_face, NULL);
@@ -77,6 +98,7 @@ TextDisplay::TextDisplay(std::string const &filename) {
   GL_ERRORS();
 }
 
+//Destructor
 TextDisplay::~TextDisplay() {
   //freetype objects used, free storage
   FT_Done_Face(ft_face);
@@ -85,8 +107,18 @@ TextDisplay::~TextDisplay() {
   //hb objects used, free storage
   hb_buffer_destroy(hb_buffer);
   hb_font_destroy(hb_font);
+
+  //unbind vbo
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+	
+  //unbind vao
+  glBindVertexArray(0);
+
+  //reset program
+	glUseProgram(0);
 }
 
+//Show text function
 void TextDisplay::show_text(std::string const &text, glm::uvec2 const &drawable_size, float const &x_in, float const &y_in, int const& size, float const &scale, glm::vec3 const &color) const {
 	//https://learnopengl.com/In-Practice/Text-Rendering  
   //pull up shade program: color_text_program
